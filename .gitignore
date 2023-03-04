@@ -1,0 +1,10 @@
+/.env
+/.gpg
+/.idea
+/.enjenv
+/*.gpg
+/be-*
+/apt-archives
+/apt-repository
+/public/*.asc
+/public/*.list

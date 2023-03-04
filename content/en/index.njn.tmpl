@@ -1,0 +1,202 @@
++++
+title = "Welcome"
+description = "Apt personal package repository"
+url = "/"
++++
+{{ $hasPkgUrl := fsExists .SetupPackageUrl }}
+{{ $hasAscLst := and (fsExists .AptPublicKeyFile) (fsExists .AptSourcesListFile) }}
+[
+
+    {
+        "type": "header",
+        "tag": "main-header",
+        "profile": "outer--inner",
+        "padding": "top",
+        "margins": "bottom",
+        "content": {
+            "header": [
+                "Welcome"
+            ],
+            "nav": [
+                { "type": "a", "href": "#introduction", "text": ["Introduction"] },
+                { "type": "a", "href": "#instructions", "text": ["Instructions"] },
+                {{ range $idx,$component := splitString .AptComponents " " }}
+                {{ if ne $idx 0 }},{{ end }}
+                {
+                    "type": "a",
+                    "href": "#packages-in-{{ $component }}",
+                    "text": ["Packages in {{ $component }}"]
+                }
+                {{ end }}
+            ]
+        }
+    },
+
+    {
+        "type": "content",
+        "tag": "introduction",
+        "profile": "outer--inner",
+        "padding": "both",
+        "margins": "both",
+        "jump-top": "true",
+        "jump-link": "true",
+        "content": {
+            "header": [
+                "Introduction"
+            ],
+            "section": [
+                {
+                    "type": "p",
+                    "text": [
+                        "This site is an apt repository, also known as a ",
+                        {
+                            "type": "a",
+                            "target": "_blank",
+                            "href": "https://itsfoss.com/ppa-guide/",
+                            "text": "Personal Package Archive"
+                        },
+                        "."
+                    ]
+                }
+            ]
+        }
+    },
+
+    {
+        "type": "header",
+        "tag": "instructions",
+        "profile": "outer--inner",
+        "padding": "none",
+        "margins": "none",
+        "jump-top": "true",
+        "jump-link": "true",
+        "content": {
+            "header": [
+                "Instructions"
+            ],
+            "nav": [
+                {{- if $hasPkgUrl }}
+                { "type": "a", "href": "#setup-package-steps", "text": "Setup package steps" }
+                {{- end }}
+                {{- if $hasAscLst }}
+                {{- if $hasPkgUrl }},{{ end }}
+                { "type": "a", "href": "#setup-manual-steps", "text": "Setup manual steps" }
+                {{- end }}
+            ]
+        }
+    }
+
+    {{- if $hasPkgUrl }},
+    {
+        "type": "content",
+        "tag": "setup-package-steps",
+        "profile": "outer--inner",
+        "theme": "instructions",
+        "padding": "none",
+        "margins": "both",
+        "jump-top": "true",
+        "jump-link": "true",
+        "content": {
+            "header": [
+                "Setup package steps..."
+            ],
+            "section": [
+                {
+                    "type": "p",
+                    "text": [
+                        "Download and install the following debian repository configuration package: ",
+                        {
+                            "type": "a",
+                            "href": "{{ fsUrl .SetupPackageUrl | asHTML }}",
+                            "text": "{{ .SetupPackageName }}"
+                        }
+                    ]
+                },
+                {
+                    "type": "code",
+                    "code": [
+                        "# download the debian pacakage:",
+                        "wget -c {{ .SiteAptUrl }}{{ .SetupPackageUrl }}",
+                        "",
+                        "# install the debian package:",
+                        "sudo dpkg -i {{ .SetupPackageName }}",
+                        "",
+                        "# update apt",
+                        "sudo apt-get update"
+                    ]
+                }
+            ]
+        }
+    }
+    {{- end }}
+
+    {{- if $hasAscLst }},
+    {
+        "type": "content",
+        "tag": "setup-manual-steps",
+        "profile": "outer--inner",
+        "theme": "instructions",
+        "padding": "none",
+        "margins": "both",
+        "jump-top": "true",
+        "jump-link": "true",
+        "content": {
+            "header": [
+                "Setup manual steps..."
+            ],
+            "section": [
+                {
+                    "type": "code",
+                    "code": [
+                        "# download the sources list file:",
+                        "sudo curl -o /etc/apt/sources.list.d/apt-go-enjin-org.list {{ printf "%v%v" .SiteAptUrl .AptPublicKeyFile }}",
+                        "",
+                        "# download the public key file:",
+                        "sudo curl -o /etc/apt/trusted.gpg.d/apt-go-enjin-org.asc {{ printf "%v%v" .SiteAptUrl .AptSourcesListFile }}",
+                        "",
+                        "# update apt",
+                        "sudo apt-get update"
+                    ]
+                }
+            ]
+        }
+    }
+    {{- end }}
+
+    {{- range $idx,$component := splitString $.AptComponents " " }}
+    {{- $allFiles := ( fsListAllFiles (printf "/%s/pool/%s" $.AptFlavour $component) | filterStrings `\.deb$` | sortedStrings ) }},
+    {
+        "type": "content",
+        "tag": "packages-in-{{ $component }}",
+        "profile": "outer--inner",
+        "padding": "both",
+        "margins": "both",
+        "jump-top": "true",
+        "jump-link": "true",
+        "content": {
+            "header": [
+                "Packages in {{ $component }}"
+            ],
+            "section": [
+                {{ if eq (len $allFiles) 0 }}
+                { "type": "p", "text": "{{ printf "No packages found within the %v component." $component }}" }
+                {{ else }}
+                {
+                  "type": "ul",
+                  "list": [
+                    {{ range $jdx,$file := $allFiles }}
+                    {{ if gt $jdx 0 }},{{ end }}
+                    {
+                        "type": "a",
+                        "href": "/dpkg-deb/{{ $.AptFlavour }}/{{ baseName $file }}",
+                        "text": "{{ baseName $file }}"
+                    }
+                   {{ end }}
+                  ]
+                }
+                {{ end }}
+            ]
+        }
+    }
+    {{- end }}
+]

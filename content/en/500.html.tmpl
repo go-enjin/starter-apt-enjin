@@ -1,0 +1,39 @@
++++
+type = "status"
+title = "500"
+url = "/500"
+layout = "full-view"
+searchable = "false"
+sitemap-ignored = "true"
++++
+<section
+        class="block"
+        id="main-header"
+        data-block-tag="main-header"
+        data-block-type="header"
+        data-block-profile="outer--inner"
+        data-block-padding="top"
+        data-block-margins="bottom"
+        data-header-reset=""
+        data-header-level="1"
+        data-header-count="1">
+    <div class="content">
+        <h1>500 - {{ _ "Internal Server Error" }}</h1>
+    </div>
+</section>
+<article
+        class="block"
+        id="not-found"
+        data-block-tag="not-found"
+        data-block-type="content"
+        data-block-profile="outer--inner"
+        data-block-padding="both"
+        data-block-margins="both"
+        data-block-jump-top="true"
+        data-block-jump-link="true">
+    <div class="content">
+        <section>
+            <p>{{ _ "Sorry! The server has encountered an internal error." }}</p>
+        </section>
+    </div>
+</article>
