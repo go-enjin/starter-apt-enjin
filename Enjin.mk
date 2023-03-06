@@ -17,7 +17,7 @@
 #: uncomment to echo instead of execute
 #CMD=echo
 
-ENJIN_MK_VERSION = v0.1.11
+ENJIN_MK_VERSION = v0.1.12
 
 SHELL = /bin/bash
 
@@ -69,6 +69,9 @@ VERSION ?= $(call _be_version)
 RELEASE ?= $(call _be_release)
 
 PROFILE_PATH ?= .
+
+EXTRA_LDFLAGS ?=
+EXTRA_GCFLAGS ?=
 
 define _check_make_target =
 $(shell \
@@ -125,18 +128,6 @@ for thing in $(1); do \
 done
 endef
 
-define _trim_path =
-$(shell \
-if [ "${GOPATH}" != "" ]; then \
-	echo "${GOPATH};${PWD}"; \
-else \
-	echo "${PWD}"; \
-fi)
-endef
-TRIM_PATHS = $(call _trim_path)
-
-EXTRA_LDFLAGS ?=
-
 define _build_tags =
 $(shell if [ "${RELEASE_BUILD}" == "true" ]; then \
 		if [ "${BUILD_TAGS}" != "" ]; then \
@@ -161,20 +152,6 @@ $(shell \
 	if [ "${RELEASE_BUILD}" == "true" ]; then \
 		echo " --optimize "; \
 	fi)
-endef
-
-define _build_flags =
-$(shell \
-if [ "${RELEASE_BUILD}" == "true" ]; \
-then \
-	echo " -ldflags=\"-s -w -buildid='' ${EXTRA_LDFLAGS}\" "; \
-	echo " -gcflags=\"-trimpath='${TRIM_PATHS}'\" "; \
-	echo " -asmflags=\"-trimpath='${TRIM_PATHS}'\" "; \
-	echo " -trimpath "; \
-else \
-	echo " -ldflags=\"-buildid='' ${EXTRA_LDFLAGS}\" "; \
-	echo " -gcflags=\"-N -l\" "; \
-fi)
 endef
 
 define _upx_build =
@@ -223,14 +200,6 @@ endef
 define _make_extra_unlocals =
 $(call _validate_extra_pkgs) \
 $(if ${GOPKG_KEYS},$(foreach key,${GOPKG_KEYS},$(call _make_go_unlocal,$($(key)_GO_PACKAGE));))
-endef
-
-define _env_build_vars =
-	BE_APP_NAME="${APP_NAME}" \
-	BE_SUMMARY="${APP_SUMMARY}" \
-	BE_ENV_PREFIX="${ENV_PREFIX}" \
-	BE_VERSION="${VERSION}" \
-	BE_RELEASE="${RELEASE}"
 endef
 
 define _env_run_vars =
@@ -493,6 +462,13 @@ else
 	@$(call _clean,${DIST_CLEAN})
 endif
 
+build: export BE_APP_NAME=${APP_NAME}
+build: export BE_SUMMARY=${APP_SUMMARY}
+build: export BE_ENV_PREFIX=${ENV_PREFIX}
+build: export BE_VERSION=${VERSION}
+build: export BE_RELEASE=${RELEASE}
+build: export ENJENV_GO_LDFLAGS=${EXTRA_LDFLAGS}
+build: export ENJENV_GO_GCFLAGS=${EXTRA_GCFLAGS}
 build: _golang ${EXTRA_BUILD_TARGET_DEPS}
 ifdef pre_build
 	@$(call pre_build)
@@ -501,13 +477,7 @@ ifdef override_build
 	@$(call override_build)
 else
 	@echo "$(call _build_label): ${VERSION}, ${RELEASE}"
-	@${CMD} \
-		$(call _env_build_vars) \
-		${ENJENV_EXE} golang build \
-			$(call _build_args) \
-			-- \
-			$(call _build_flags) \
-			-v $(call _build_tags)
+	@${CMD} ${ENJENV_EXE} golang build $(call _build_args) -- -v $(call _build_tags)
 	@if [ -x "./${APP_NAME}" ]; then \
 		echo "# produced: ${APP_NAME}"; \
 		sha256sum ./${APP_NAME}; \
