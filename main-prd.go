@@ -51,6 +51,7 @@ func ppaPublicFeature() (f feature.Feature) {
 func ppaAptRepoFeature() (f feature.Feature) {
 	f = publicLocal.New().
 		MountPath("/"+UseAptFlavour, UseBasePath+"/"+UseAptFlavour).
+		SetRegexCacheControl("/dists/", "no-store").
 		Make()
 	return
 }
