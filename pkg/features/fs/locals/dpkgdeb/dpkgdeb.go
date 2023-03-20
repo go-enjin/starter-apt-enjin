@@ -187,7 +187,7 @@ func (f *CFeature) Use(s feature.System) feature.MiddlewareFn {
 }
 
 func (f *CFeature) ServePath(path string, s feature.System, w http.ResponseWriter, r *http.Request) (err error) {
-	log.DebugF("checking path: %v", path)
+	// log.DebugF("checking path: %v", path)
 	if p, ok := f.infos[path]; ok {
 		pg := p.Copy()
 		var cacheControl string
