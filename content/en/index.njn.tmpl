@@ -149,10 +149,10 @@ url = "/"
                     "type": "code",
                     "code": [
                         "# download the sources list file:",
-                        "sudo curl -o /etc/apt/sources.list.d/apt-go-enjin-org.list {{ printf "%v%v" .SiteAptUrl .AptPublicKeyFile }}",
+                        "sudo curl -o /etc/apt/sources.list.d/apt-go-enjin-org.list {{ printf "%v%v" .SiteAptUrl .AptSourcesListFile }}",
                         "",
                         "# download the public key file:",
-                        "sudo curl -o /etc/apt/trusted.gpg.d/apt-go-enjin-org.asc {{ printf "%v%v" .SiteAptUrl .AptSourcesListFile }}",
+                        "sudo curl -o /etc/apt/trusted.gpg.d/apt-go-enjin-org.asc {{ printf "%v%v" .SiteAptUrl .AptPublicKeyFile }}",
                         "",
                         "# update apt",
                         "sudo apt-get update"
