@@ -17,7 +17,6 @@
 -include Sitefile
 export
 -include .env
-export
 
 BE_LOCAL_PATH ?= ../be
 
@@ -72,10 +71,26 @@ export SKIP_APT_PACKAGE=$(shell if [ -f "${APT_DEB_DEST}" ]; then echo "${APT_DE
 
 APP_NAME    ?= be-apt-enjin
 APP_SUMMARY ?= ${SITEKEY} apt repository
+DENY_DURATION ?= 60
 
-COMMON_TAGS = locals,stock_pgc,page_search,bleve_fts,page_robots,header_proxy,papertrail,htmlify
-BUILD_TAGS = prd,embeds,$(COMMON_TAGS)
-DEV_BUILD_TAGS = dev,$(COMMON_TAGS)
+COMMON_TAGS += htmlify
+COMMON_TAGS += papertrail
+COMMON_TAGS += header_proxy
+COMMON_TAGS += basic_auth
+COMMON_TAGS += driver_kvs_gocache memory
+COMMON_TAGS += page_pql
+COMMON_TAGS += page_robots
+COMMON_TAGS += locals
+COMMON_TAGS += driver_fs_embed
+COMMON_TAGS += fs_theme fs_menu fs_content fs_public fs_locale
+COMMON_TAGS += driver_fts_bleve
+COMMON_TAGS += page_sitemap
+COMMON_TAGS += page_query
+COMMON_TAGS += page_search
+
+BUILD_TAGS     = prd embeds $(COMMON_TAGS)
+DEV_BUILD_TAGS = dev $(COMMON_TAGS)
+
 EXTRA_PKGS =
 EXTRA_CLEAN = be-*
 EXTRA_LDFLAGS = \
@@ -92,6 +107,9 @@ EXTRA_LDFLAGS = \
 	-X 'main.AptSourcesListFile=${APT_SRCLST_FILE}' \
 	-X 'main.SetupDebUrl=/${LATEST_DEB}' \
 	-X 'main.SetupDebName=${LATEST_DEB}'
+
+BUILD_LDFLAGS = ${EXTRA_LDFLAGS}
+DEV_BUILD_LDFLAGS = ${EXTRA_LDFLAGS}
 
 # Custom go.mod locals
 GOPKG_KEYS = SET GOXT DJHT
