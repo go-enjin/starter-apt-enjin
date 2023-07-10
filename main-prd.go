@@ -48,7 +48,7 @@ func ppaPublicFeature() (f feature.Feature) {
 }
 
 func ppaAptRepoFeature() (f feature.Feature) {
-	f = public.New().
+	f = public.NewTagged("fs-public-apt-repo").
 		MountLocalPath("/"+UseAptFlavour, UseBasePath+"/"+UseAptFlavour).
 		SetRegexCacheControl("/dists/", "no-store").
 		Make()
