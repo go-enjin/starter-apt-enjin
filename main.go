@@ -18,23 +18,30 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/go-enjin/be/features/outputs/htmlify"
-	pgc "github.com/go-enjin/be/features/pages/caching/stock-pgc"
-	fts "github.com/go-enjin/be/features/pages/indexing/bleve-fts"
-	"github.com/go-enjin/be/features/pages/search"
-	"github.com/go-enjin/be/pkg/cli/env"
 	"github.com/go-enjin/golang-org-x-text/language"
 	semantic "github.com/go-enjin/semantic-enjin-theme"
-
 	"github.com/go-enjin/starter-apt-enjin/pkg/features/fs/locals/dpkgdeb"
 
 	"github.com/go-enjin/be"
+	"github.com/go-enjin/be/drivers/fts/bleve"
+	"github.com/go-enjin/be/drivers/kvs/gocache"
 	"github.com/go-enjin/be/features/log/papertrail"
+	"github.com/go-enjin/be/features/outputs/htmlify"
 	"github.com/go-enjin/be/features/pages/formats"
+	"github.com/go-enjin/be/features/pages/pql"
 	"github.com/go-enjin/be/features/pages/robots"
+	"github.com/go-enjin/be/features/pages/search"
 	"github.com/go-enjin/be/features/requests/headers/proxy"
+	"github.com/go-enjin/be/pkg/cli/env"
+	"github.com/go-enjin/be/pkg/feature"
 	"github.com/go-enjin/be/pkg/lang"
 	"github.com/go-enjin/be/pkg/log"
+	"github.com/go-enjin/be/pkg/userbase"
+)
+
+const (
+	gPagesPqlKvsFeature = "pages-pql-kvs-feature"
+	gPagesPqlKvsCache   = "pages-pql-kvs-cache"
 )
 
 var (
@@ -56,9 +63,12 @@ var (
 var (
 	UseBasePath   = ""
 	UseAptFlavour = ""
+
+	fCachePagesPql feature.Feature
 )
 
 func init() {
+	fCachePagesPql = gocache.NewTagged(gPagesPqlKvsFeature).AddMemoryCache(gPagesPqlKvsCache).Make()
 
 	if AptFlavour == "" {
 		log.FatalF("build error: .AptFlavour is empty\n")
@@ -75,16 +85,17 @@ func main() {
 		SiteTagLine(SiteTagLine).
 		AddFeature(proxy.New().Enable().Make()).
 		AddFeature(formats.New().Defaults().Make()).
-		AddFeature(pgc.New().Make()).
+		AddFeature(fCachePagesPql).
+		AddFeature(pql.NewTagged("pages-pql").SetKeyValueCache(gPagesPqlKvsFeature, gPagesPqlKvsCache).Make()).
 		AddFeature(htmlify.New().Make()).
 		SiteDefaultLanguage(language.English).
 		SiteSupportedLanguages(language.English).
 		SiteLanguageMode(lang.NewPathMode().Make()).
-		AddTheme(semantic.SemanticEnjinTheme()).
+		AddTheme(semantic.Theme()).
 		AddTheme(ppaEnjinTheme()).
 		SetTheme("apt-enjin").
-		AddFeature(fts.New().Make()).
-		AddFeature(search.New().SetPath("/search").Make()).
+		AddFeature(bleve.NewTagged("bleve-fts").Make()).
+		AddFeature(search.New().SetSearchPath("/search").Make()).
 		AddFeature(papertrail.Make()).
 		AddFeature(robots.New().
 			AddRuleGroup(robots.NewRuleGroup().
@@ -97,6 +108,11 @@ func main() {
 		AddFeature(dpkgdeb.New().
 			MountPath("/dpkg-deb/"+UseAptFlavour, UseBasePath+"/"+UseAptFlavour).
 			Make(),
+		).
+		SetPublicAccess(
+			userbase.NewAction("enjin", "view", "page"),
+			userbase.NewAction("fs-content", "view", "page"),
+			userbase.NewAction("local-deb-info", "view", "page"),
 		).
 		SiteCopyrightName(SiteName).
 		SiteCopyrightNotice("All rights reserved").

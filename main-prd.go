@@ -19,9 +19,8 @@ package main
 import (
 	"embed"
 
-	"github.com/go-enjin/be/features/fs/embeds/content"
-	publicEmbed "github.com/go-enjin/be/features/fs/embeds/public"
-	publicLocal "github.com/go-enjin/be/features/fs/locals/public"
+	"github.com/go-enjin/be/features/fs/content"
+	"github.com/go-enjin/be/features/fs/public"
 	"github.com/go-enjin/be/pkg/feature"
 	"github.com/go-enjin/be/pkg/log"
 	"github.com/go-enjin/be/pkg/theme"
@@ -32,7 +31,7 @@ var themeFs embed.FS
 
 func ppaEnjinTheme() (t *theme.Theme) {
 	var err error
-	if t, err = theme.NewEmbed("themes/apt-enjin", themeFs); err != nil {
+	if t, err = theme.NewEmbed("apt-enjin", "themes/apt-enjin", themeFs); err != nil {
 		log.FatalF("error loading embedded apt-enjin theme: %v", err)
 	}
 	return
@@ -42,15 +41,15 @@ func ppaEnjinTheme() (t *theme.Theme) {
 var publicFs embed.FS
 
 func ppaPublicFeature() (f feature.Feature) {
-	f = publicEmbed.New().
-		MountPathFs("/", "public", publicFs).
+	f = public.New().
+		MountEmbedPath("/", "public", publicFs).
 		Make()
 	return
 }
 
 func ppaAptRepoFeature() (f feature.Feature) {
-	f = publicLocal.New().
-		MountPath("/"+UseAptFlavour, UseBasePath+"/"+UseAptFlavour).
+	f = public.New().
+		MountLocalPath("/"+UseAptFlavour, UseBasePath+"/"+UseAptFlavour).
 		SetRegexCacheControl("/dists/", "no-store").
 		Make()
 	return
@@ -61,7 +60,9 @@ var contentFs embed.FS
 
 func ppaContentFeature() (f feature.Feature) {
 	f = content.New().
-		MountPathFs("/", "content", contentFs).
+		MountEmbedPath("/", "content", contentFs).
+		AddToIndexProviders("pages-pql").
+		AddToSearchProviders("bleve-fts").
 		Make()
 	return
 }
