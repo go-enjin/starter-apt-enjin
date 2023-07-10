@@ -26,18 +26,18 @@ import (
 	"github.com/fvbommel/sortorder"
 	"github.com/urfave/cli/v2"
 
-	"github.com/go-enjin/be/features/pages/indexing/bleve-fts"
-	"github.com/go-enjin/be/pkg/hash/sha"
-
+	"github.com/go-enjin/be/drivers/fs/local"
+	"github.com/go-enjin/be/drivers/fts/bleve"
 	"github.com/go-enjin/be/pkg/cli/run"
 	"github.com/go-enjin/be/pkg/feature"
+	"github.com/go-enjin/be/pkg/feature/filesystem"
 	"github.com/go-enjin/be/pkg/forms"
 	"github.com/go-enjin/be/pkg/fs"
-	"github.com/go-enjin/be/pkg/fs/local"
 	"github.com/go-enjin/be/pkg/log"
 	"github.com/go-enjin/be/pkg/maps"
 	"github.com/go-enjin/be/pkg/page"
 	"github.com/go-enjin/be/pkg/theme"
+	"github.com/go-enjin/be/pkg/userbase"
 	"github.com/go-enjin/golang-org-x-text/language"
 )
 
@@ -51,23 +51,24 @@ var (
 )
 
 const (
-	Tag    feature.Tag = "LocalDebInfo"
+	Tag    feature.Tag = "local-deb-info"
 	Bucket string      = "local-deb-info"
 )
 
 type Feature interface {
-	feature.Middleware
+	feature.Feature
 	feature.PageProvider
+	feature.UseMiddleware
+	userbase.UserActionsProvider
 }
 
 type CFeature struct {
-	feature.CMiddleware
+	feature.CFeature
 
-	enjin  feature.Internals
-	search fts.Feature
+	search bleve.Feature
 
 	setup map[string]string
-	mount []fs.MountPoint
+	mount []*filesystem.CMountPoint
 	infos map[string]*page.Page
 
 	cacheControl string
@@ -83,6 +84,7 @@ type MakeFeature interface {
 func New() MakeFeature {
 	f := new(CFeature)
 	f.Init(f)
+	f.FeatureTag = Tag
 	return f
 }
 
@@ -101,7 +103,7 @@ func (f *CFeature) Make() Feature {
 }
 
 func (f *CFeature) Init(this interface{}) {
-	f.CMiddleware.Init(this)
+	f.CFeature.Init(this)
 	f.setup = make(map[string]string)
 	f.infos = make(map[string]*page.Page)
 }
@@ -116,10 +118,10 @@ func (f *CFeature) Build(_ feature.Buildable) (err error) {
 }
 
 func (f *CFeature) Setup(enjin feature.Internals) {
-	f.enjin = enjin
+	f.CFeature.Setup(enjin)
 
 	for _, feat := range enjin.Features() {
-		if s, ok := feat.(fts.Feature); ok {
+		if s, ok := feat.(bleve.Feature); ok {
 			f.search = s
 			break
 		}
@@ -134,15 +136,16 @@ func (f *CFeature) Setup(enjin feature.Internals) {
 	for _, path := range maps.SortedKeys(f.setup) {
 
 		var lfs fs.FileSystem
-		if lfs, err = local.New(path); err != nil {
+		if lfs, err = local.New(f.Tag().String(), path); err != nil {
 			log.FatalF(`error mounting filesystem: %v`, err)
 			return
 		}
 
-		mp := fs.MountPoint{
+		mp := &filesystem.CMountPoint{
 			Path:  path,
 			Mount: f.setup[path],
-			FS:    lfs,
+			ROFS:  lfs,
+			RWFS:  nil,
 		}
 		f.mount = append(f.mount, mp)
 
@@ -151,9 +154,12 @@ func (f *CFeature) Setup(enjin feature.Internals) {
 }
 
 func (f *CFeature) Startup(ctx *cli.Context) (err error) {
+	if err = f.CFeature.Startup(ctx); err != nil {
+		return
+	}
 
 	for _, mp := range f.mount {
-		files, _ := mp.FS.ListAllFiles(".")
+		files, _ := mp.ROFS.ListAllFiles(".")
 		for _, file := range files {
 			if strings.HasSuffix(file, ".deb") || strings.HasSuffix(file, ".udeb") {
 				if p, ee := f.makeDebPage(file, mp); ee != nil {
@@ -161,13 +167,18 @@ func (f *CFeature) Startup(ctx *cli.Context) (err error) {
 					return
 				} else {
 					f.infos[p.Url] = p
-					log.DebugF("cached dpkg-deb info: %v", p.Url)
+					log.DebugF("cached dpkg-deb info: %v (has pm: %v)", p.Url, p.PageMatter != nil)
 				}
 			}
 		}
 	}
 
 	// err = fmt.Errorf("testing")
+	return
+}
+
+func (f *CFeature) UserActions() (actions userbase.Actions) {
+	actions = append(actions, userbase.NewAction(f.Tag().Kebab(), "view", "page"))
 	return
 }
 
@@ -186,10 +197,11 @@ func (f *CFeature) Use(s feature.System) feature.MiddlewareFn {
 	}
 }
 
-func (f *CFeature) ServePath(path string, s feature.System, w http.ResponseWriter, r *http.Request) (err error) {
+func (f *CFeature) ServePath(path string, _ feature.System, w http.ResponseWriter, r *http.Request) (err error) {
 	// log.DebugF("checking path: %v", path)
 	if p, ok := f.infos[path]; ok {
 		pg := p.Copy()
+		pg.PageMatter = p.PageMatter
 		var cacheControl string
 		if f.cacheControl == "" {
 			cacheControl = DefaultCacheControl
@@ -198,7 +210,7 @@ func (f *CFeature) ServePath(path string, s feature.System, w http.ResponseWrite
 		}
 		cacheControl = pg.Context.String("CacheControl", cacheControl)
 		pg.Context.SetSpecific("CacheControl", cacheControl)
-		if err = s.ServePage(pg, w, r); err == nil {
+		if err = f.Enjin.ServePage(pg, w, r); err == nil {
 			log.DebugF("served local %v debinfo: [%v] %v", f.setup[path], pg.Language, path)
 			return
 		}
@@ -240,7 +252,7 @@ func (f *CFeature) listMountPaths() (paths []string) {
 	return
 }
 
-func (f *CFeature) makeDebPage(file string, mp fs.MountPoint) (p *page.Page, err error) {
+func (f *CFeature) makeDebPage(file string, mp *filesystem.CMountPoint) (p *page.Page, err error) {
 	if !fs.FileExists(file) {
 		err = fmt.Errorf("file not found: %v", file)
 		return
@@ -294,18 +306,15 @@ func (f *CFeature) makeDebPage(file string, mp fs.MountPoint) (p *page.Page, err
 
 	created := time.Now().Unix()
 	var t *theme.Theme
-	if t, err = f.enjin.GetTheme(); err != nil {
+	if t, err = f.Enjin.GetTheme(); err != nil {
 		return
 	}
-	var shasum string
-	if shasum, err = sha.DataHash10([]byte(source)); err != nil {
-		return
-	}
-	if p, err = page.New(fullpath, source, shasum, created, created, t, f.enjin.Context()); err != nil {
+	if p, err = page.New(f.Tag().Kebab(), fullpath, source, created, created, t, f.Enjin.Context()); err != nil {
 		err = fmt.Errorf("error making new page: %v - %v", fullpath, err)
 		return
 	}
 	p.SetSlugUrl(url)
+	//p.PageMatter = matter.NewPageMatter(f.Tag().String(), p.Path, source, matter.JsonMatter, p.Context)
 	err = f.search.AddToSearchIndex(nil, p)
 	return
 }
