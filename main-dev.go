@@ -17,39 +17,32 @@
 package main
 
 import (
+	semantic "github.com/go-enjin/semantic-enjin-theme"
+
 	"github.com/go-enjin/be/features/fs/content"
 	"github.com/go-enjin/be/features/fs/public"
-	"github.com/go-enjin/be/pkg/feature"
-	"github.com/go-enjin/be/pkg/log"
-	"github.com/go-enjin/be/pkg/theme"
+	"github.com/go-enjin/be/features/fs/themes"
 )
 
-func ppaEnjinTheme() (t *theme.Theme) {
-	var err error
-	if t, err = theme.NewLocal("apt-enjin", "themes/apt-enjin"); err != nil {
-		log.FatalF("error loading local apt-enjin theme: %v", err)
-	}
-	return
-}
+func init() {
+	fThemes = themes.New().
+		Include(semantic.Theme()).
+		LocalTheme("themes/apt-enjin").
+		SetTheme("apt-enjin").
+		Make()
 
-func ppaPublicFeature() (f feature.Feature) {
-	f = public.New().
+	fPublic = public.New().
 		MountLocalPath("/", "public").
+		Make()
+
+	fAptRepo = public.NewTagged("fs-public-apt-repo").
 		MountLocalPath("/"+UseAptFlavour, UseBasePath+"/"+UseAptFlavour).
 		SetRegexCacheControl("/dists/", "no-store").
 		Make()
-	return
-}
 
-func ppaAptRepoFeature() (f feature.Feature) {
-	return
-}
-
-func ppaContentFeature() (f feature.Feature) {
-	f = content.New().
+	fContent = content.New().
 		MountLocalPath("/", "content").
 		AddToIndexProviders("pages-pql").
 		AddToSearchProviders("bleve-fts").
 		Make()
-	return
 }

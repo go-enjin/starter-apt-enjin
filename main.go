@@ -19,24 +19,20 @@ import (
 	"os"
 
 	"github.com/go-enjin/golang-org-x-text/language"
-	semantic "github.com/go-enjin/semantic-enjin-theme"
+
 	"github.com/go-enjin/starter-apt-enjin/pkg/features/fs/locals/dpkgdeb"
 
 	"github.com/go-enjin/be"
 	"github.com/go-enjin/be/drivers/fts/bleve"
 	"github.com/go-enjin/be/drivers/kvs/gocache"
-	"github.com/go-enjin/be/features/log/papertrail"
-	"github.com/go-enjin/be/features/outputs/htmlify"
-	"github.com/go-enjin/be/features/pages/formats"
 	"github.com/go-enjin/be/features/pages/pql"
 	"github.com/go-enjin/be/features/pages/robots"
 	"github.com/go-enjin/be/features/pages/search"
-	"github.com/go-enjin/be/features/requests/headers/proxy"
 	"github.com/go-enjin/be/pkg/cli/env"
 	"github.com/go-enjin/be/pkg/feature"
 	"github.com/go-enjin/be/pkg/lang"
 	"github.com/go-enjin/be/pkg/log"
-	"github.com/go-enjin/be/pkg/userbase"
+	"github.com/go-enjin/be/presets/defaults"
 )
 
 const (
@@ -61,21 +57,19 @@ var (
 )
 
 var (
-	UseBasePath   = ""
-	UseAptFlavour = ""
+	UseBasePath   = env.Get("AE_BASEPATH", "apt-repository")
+	UseAptFlavour = env.Get("APT_FLAVOUR", AptFlavour)
 
-	fCachePagesPql feature.Feature
+	fThemes  feature.Feature
+	fPublic  feature.Feature
+	fContent feature.Feature
+	fAptRepo feature.Feature
 )
 
 func init() {
-	fCachePagesPql = gocache.NewTagged(gPagesPqlKvsFeature).AddMemoryCache(gPagesPqlKvsCache).Make()
-
 	if AptFlavour == "" {
 		log.FatalF("build error: .AptFlavour is empty\n")
 	}
-
-	UseBasePath = env.Get("AE_BASEPATH", "apt-repository")
-	UseAptFlavour = env.Get("APT_FLAVOUR", AptFlavour)
 }
 
 func main() {
@@ -83,37 +77,9 @@ func main() {
 		SiteTag(SiteTag).
 		SiteName(SiteName).
 		SiteTagLine(SiteTagLine).
-		AddFeature(proxy.New().Enable().Make()).
-		AddFeature(formats.New().Defaults().Make()).
-		AddFeature(fCachePagesPql).
-		AddFeature(pql.NewTagged("pages-pql").SetKeyValueCache(gPagesPqlKvsFeature, gPagesPqlKvsCache).Make()).
-		AddFeature(htmlify.New().Make()).
 		SiteDefaultLanguage(language.English).
 		SiteSupportedLanguages(language.English).
 		SiteLanguageMode(lang.NewPathMode().Make()).
-		AddTheme(semantic.Theme()).
-		AddTheme(ppaEnjinTheme()).
-		SetTheme("apt-enjin").
-		AddFeature(bleve.NewTagged("bleve-fts").Make()).
-		AddFeature(search.New().SetSearchPath("/search").Make()).
-		AddFeature(papertrail.Make()).
-		AddFeature(robots.New().
-			AddRuleGroup(robots.NewRuleGroup().
-				AddUserAgent("*").AddAllowed("/").Make(),
-			).Make(),
-		).
-		AddFeature(ppaPublicFeature()).
-		AddFeature(ppaAptRepoFeature()).
-		AddFeature(ppaContentFeature()).
-		AddFeature(dpkgdeb.New().
-			MountPath("/dpkg-deb/"+UseAptFlavour, UseBasePath+"/"+UseAptFlavour).
-			Make(),
-		).
-		SetPublicAccess(
-			userbase.NewAction("enjin", "view", "page"),
-			userbase.NewAction("fs-content", "view", "page"),
-			userbase.NewAction("local-deb-info", "view", "page"),
-		).
 		SiteCopyrightName(SiteName).
 		SiteCopyrightNotice("All rights reserved").
 		Set("SiteAptUrl", SiteAptUrl).
@@ -128,6 +94,31 @@ func main() {
 		Set("AptArchitectures", AptArchitectures).
 		Set("AptPublicKeyFile", AptPublicKeyFile).
 		Set("AptSourcesListFile", AptSourcesListFile).
+		AddPreset(defaults.New().Make()).
+		AddFeature(fThemes).
+		AddFeature(gocache.NewTagged(gPagesPqlKvsFeature).AddMemoryCache(gPagesPqlKvsCache).Make()).
+		AddFeature(pql.NewTagged("pages-pql").
+			SetKeyValueCache(gPagesPqlKvsFeature, gPagesPqlKvsCache).
+			Make()).
+		AddFeature(bleve.NewTagged("bleve-fts").Make()).
+		AddFeature(search.New().SetSearchPath("/search").Make()).
+		AddFeature(robots.New().
+			AddRuleGroup(robots.NewRuleGroup().
+				AddUserAgent("*").AddAllowed("/").Make(),
+			).Make(),
+		).
+		AddFeature(fPublic).
+		AddFeature(fAptRepo).
+		AddFeature(fContent).
+		AddFeature(dpkgdeb.New().
+			MountPath("/dpkg-deb/"+UseAptFlavour, UseBasePath+"/"+UseAptFlavour).
+			Make(),
+		).
+		SetPublicAccess(
+			feature.NewAction("enjin", "view", "page"),
+			feature.NewAction("fs-content", "view", "page"),
+			feature.NewAction("local-deb-info", "view", "page"),
+		).
 		SetStatusPage(404, "/404").
 		SetStatusPage(500, "/500")
 	// add content and status pages
