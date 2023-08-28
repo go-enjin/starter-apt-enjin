@@ -26,6 +26,8 @@ import (
 	"github.com/fvbommel/sortorder"
 	"github.com/urfave/cli/v2"
 
+	"github.com/go-enjin/golang-org-x-text/language"
+
 	"github.com/go-enjin/be/drivers/fs/local"
 	"github.com/go-enjin/be/drivers/fts/bleve"
 	"github.com/go-enjin/be/pkg/cli/run"
@@ -35,10 +37,8 @@ import (
 	"github.com/go-enjin/be/pkg/fs"
 	"github.com/go-enjin/be/pkg/log"
 	"github.com/go-enjin/be/pkg/maps"
-	"github.com/go-enjin/be/pkg/page"
-	"github.com/go-enjin/be/pkg/theme"
 	"github.com/go-enjin/be/pkg/userbase"
-	"github.com/go-enjin/golang-org-x-text/language"
+	"github.com/go-enjin/be/types/page"
 )
 
 var (
@@ -62,18 +62,6 @@ type Feature interface {
 	userbase.UserActionsProvider
 }
 
-type CFeature struct {
-	feature.CFeature
-
-	search bleve.Feature
-
-	setup map[string]string
-	mount []*filesystem.CMountPoint
-	infos map[string]*page.Page
-
-	cacheControl string
-}
-
 type MakeFeature interface {
 	MountPath(mount, path string) MakeFeature
 	SetCacheControl(values string) MakeFeature
@@ -81,11 +69,30 @@ type MakeFeature interface {
 	Make() Feature
 }
 
+type CFeature struct {
+	feature.CFeature
+
+	search bleve.Feature
+
+	setup map[string]string
+	mount []*filesystem.CMountPoint
+	infos map[string]feature.Page
+
+	cacheControl string
+}
+
 func New() MakeFeature {
 	f := new(CFeature)
 	f.Init(f)
+	f.PackageTag = Tag
 	f.FeatureTag = Tag
 	return f
+}
+
+func (f *CFeature) Init(this interface{}) {
+	f.CFeature.Init(this)
+	f.setup = make(map[string]string)
+	f.infos = make(map[string]feature.Page)
 }
 
 func (f *CFeature) MountPath(mount, path string) MakeFeature {
@@ -102,17 +109,6 @@ func (f *CFeature) Make() Feature {
 	return f
 }
 
-func (f *CFeature) Init(this interface{}) {
-	f.CFeature.Init(this)
-	f.setup = make(map[string]string)
-	f.infos = make(map[string]*page.Page)
-}
-
-func (f *CFeature) Tag() (tag feature.Tag) {
-	tag = Tag
-	return
-}
-
 func (f *CFeature) Build(_ feature.Buildable) (err error) {
 	return
 }
@@ -120,11 +116,9 @@ func (f *CFeature) Build(_ feature.Buildable) (err error) {
 func (f *CFeature) Setup(enjin feature.Internals) {
 	f.CFeature.Setup(enjin)
 
-	for _, feat := range enjin.Features() {
-		if s, ok := feat.(bleve.Feature); ok {
-			f.search = s
-			break
-		}
+	for _, feat := range feature.FilterTyped[bleve.Feature](enjin.Features().List()) {
+		f.search = feat
+		break
 	}
 
 	if f.search == nil {
@@ -149,7 +143,7 @@ func (f *CFeature) Setup(enjin feature.Internals) {
 		}
 		f.mount = append(f.mount, mp)
 
-		log.DebugF("mounted local debinfo filesystem %v", mp)
+		log.DebugF("mounted local debinfo filesystem: %v", mp)
 	}
 }
 
@@ -166,8 +160,8 @@ func (f *CFeature) Startup(ctx *cli.Context) (err error) {
 					err = fmt.Errorf("error making deb page: %v - %v", file, ee)
 					return
 				} else {
-					f.infos[p.Url] = p
-					log.DebugF("cached dpkg-deb info: %v (has pm: %v)", p.Url, p.PageMatter != nil)
+					f.infos[p.Url()] = p
+					log.DebugF("cached dpkg-deb info: %v", p.Url())
 				}
 			}
 		}
@@ -177,8 +171,8 @@ func (f *CFeature) Startup(ctx *cli.Context) (err error) {
 	return
 }
 
-func (f *CFeature) UserActions() (actions userbase.Actions) {
-	actions = append(actions, userbase.NewAction(f.Tag().Kebab(), "view", "page"))
+func (f *CFeature) UserActions() (actions feature.Actions) {
+	actions = append(actions, feature.NewAction(f.Tag().Kebab(), "view", "page"))
 	return
 }
 
@@ -201,17 +195,16 @@ func (f *CFeature) ServePath(path string, _ feature.System, w http.ResponseWrite
 	// log.DebugF("checking path: %v", path)
 	if p, ok := f.infos[path]; ok {
 		pg := p.Copy()
-		pg.PageMatter = p.PageMatter
 		var cacheControl string
 		if f.cacheControl == "" {
 			cacheControl = DefaultCacheControl
 		} else {
 			cacheControl = f.cacheControl
 		}
-		cacheControl = pg.Context.String("CacheControl", cacheControl)
-		pg.Context.SetSpecific("CacheControl", cacheControl)
+		cacheControl = pg.Context().String("CacheControl", cacheControl)
+		pg.Context().SetSpecific("CacheControl", cacheControl)
 		if err = f.Enjin.ServePage(pg, w, r); err == nil {
-			log.DebugF("served local %v debinfo: [%v] %v", f.setup[path], pg.Language, path)
+			log.DebugF("served local %v debinfo: [%v] %v", f.setup[path], pg.Language(), path)
 			return
 		}
 		err = fmt.Errorf("serve local %v debinfo: %v - error: %v", f.setup[path], path, err)
@@ -222,24 +215,24 @@ func (f *CFeature) ServePath(path string, _ feature.System, w http.ResponseWrite
 	return
 }
 
-func (f *CFeature) FindRedirection(path string) (p *page.Page) {
+func (f *CFeature) FindRedirection(path string) (p feature.Page) {
 	// p, _ = f.cache.LookupRedirect(Bucket, path)
 	return
 }
 
-func (f *CFeature) FindTranslations(path string) (found []*page.Page) {
+func (f *CFeature) FindTranslations(path string) (found []feature.Page) {
 	// found = f.cache.LookupTranslations(Bucket, path)
 	return
 }
 
-func (f *CFeature) FindPage(tag language.Tag, path string) (p *page.Page) {
+func (f *CFeature) FindPage(tag language.Tag, path string) (p feature.Page) {
 	if pg, ok := f.infos[path]; ok {
 		p = pg
 	}
 	return
 }
 
-func (f *CFeature) LookupPrefixed(path string) (pages []*page.Page) {
+func (f *CFeature) LookupPrefixed(path string) (pages []feature.Page) {
 	// pages = f.cache.LookupPrefix(Bucket, path)
 	return
 }
@@ -252,11 +245,7 @@ func (f *CFeature) listMountPaths() (paths []string) {
 	return
 }
 
-func (f *CFeature) makeDebPage(file string, mp *filesystem.CMountPoint) (p *page.Page, err error) {
-	if !fs.FileExists(file) {
-		err = fmt.Errorf("file not found: %v", file)
-		return
-	}
+func (f *CFeature) makeDebPage(file string, mp *filesystem.CMountPoint) (p feature.Page, err error) {
 
 	fullpath := filepath.Join(mp.Path, file)
 
@@ -305,10 +294,7 @@ func (f *CFeature) makeDebPage(file string, mp *filesystem.CMountPoint) (p *page
 	)
 
 	created := time.Now().Unix()
-	var t *theme.Theme
-	if t, err = f.Enjin.GetTheme(); err != nil {
-		return
-	}
+	t := f.Enjin.MustGetTheme()
 	if p, err = page.New(f.Tag().Kebab(), fullpath, source, created, created, t, f.Enjin.Context()); err != nil {
 		err = fmt.Errorf("error making new page: %v - %v", fullpath, err)
 		return
