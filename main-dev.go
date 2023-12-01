@@ -17,20 +17,11 @@
 package main
 
 import (
-	semantic "github.com/go-enjin/semantic-enjin-theme"
-
 	"github.com/go-enjin/be/features/fs/content"
 	"github.com/go-enjin/be/features/fs/public"
-	"github.com/go-enjin/be/features/fs/themes"
 )
 
 func init() {
-	fThemes = themes.New().
-		Include(semantic.Theme()).
-		LocalTheme("themes/apt-enjin").
-		SetTheme("apt-enjin").
-		Make()
-
 	fPublic = public.New().
 		MountLocalPath("/", "public").
 		Make()

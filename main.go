@@ -20,11 +20,13 @@ import (
 
 	"github.com/go-enjin/golang-org-x-text/language"
 
-	"github.com/go-enjin/starter-apt-enjin/pkg/features/fs/locals/dpkgdeb"
+	apt "github.com/go-enjin/apt-enjin-theme"
+	semantic "github.com/go-enjin/semantic-enjin-theme"
 
 	"github.com/go-enjin/be"
 	"github.com/go-enjin/be/drivers/fts/bleve"
 	"github.com/go-enjin/be/drivers/kvs/gocache"
+	"github.com/go-enjin/be/features/fs/themes"
 	"github.com/go-enjin/be/features/pages/pql"
 	"github.com/go-enjin/be/features/pages/robots"
 	"github.com/go-enjin/be/features/pages/search"
@@ -33,6 +35,8 @@ import (
 	"github.com/go-enjin/be/pkg/lang"
 	"github.com/go-enjin/be/pkg/log"
 	"github.com/go-enjin/be/presets/defaults"
+
+	"github.com/go-enjin/starter-apt-enjin/pkg/features/fs/locals/dpkgdeb"
 )
 
 const (
@@ -95,8 +99,14 @@ func main() {
 		Set("AptPublicKeyFile", AptPublicKeyFile).
 		Set("AptSourcesListFile", AptSourcesListFile).
 		AddPreset(defaults.New().Make()).
-		AddFeature(fThemes).
-		AddFeature(gocache.NewTagged(gPagesPqlKvsFeature).AddMemoryCache(gPagesPqlKvsCache).Make()).
+		AddFeature(themes.New().
+			Include(semantic.Theme()).
+			Include(apt.Theme()).
+			SetTheme(apt.Name).
+			Make()).
+		AddFeature(gocache.NewTagged(gPagesPqlKvsFeature).
+			AddMemoryCache(gPagesPqlKvsCache).
+			Make()).
 		AddFeature(pql.NewTagged("pages-pql").
 			SetKeyValueCache(gPagesPqlKvsFeature, gPagesPqlKvsCache).
 			Make()).
@@ -104,16 +114,16 @@ func main() {
 		AddFeature(search.New().SetSearchPath("/search").Make()).
 		AddFeature(robots.New().
 			AddRuleGroup(robots.NewRuleGroup().
-				AddUserAgent("*").AddAllowed("/").Make(),
-			).Make(),
-		).
+				AddUserAgent("*").
+				AddAllowed("/").
+				Make()).
+			Make()).
 		AddFeature(fPublic).
 		AddFeature(fAptRepo).
 		AddFeature(fContent).
 		AddFeature(dpkgdeb.New().
 			MountPath("/dpkg-deb/"+UseAptFlavour, UseBasePath+"/"+UseAptFlavour).
-			Make(),
-		).
+			Make()).
 		SetPublicAccess(
 			feature.NewAction("enjin", "view", "page"),
 			feature.NewAction("fs-content", "view", "page"),

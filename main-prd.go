@@ -19,15 +19,9 @@ package main
 import (
 	"embed"
 
-	semantic "github.com/go-enjin/semantic-enjin-theme"
-
 	"github.com/go-enjin/be/features/fs/content"
 	"github.com/go-enjin/be/features/fs/public"
-	"github.com/go-enjin/be/features/fs/themes"
 )
-
-//go:embed themes/**
-var themeFs embed.FS
 
 //go:embed public/**
 var publicFs embed.FS
@@ -36,12 +30,6 @@ var publicFs embed.FS
 var contentFs embed.FS
 
 func init() {
-	fThemes = themes.New().
-		Include(semantic.Theme()).
-		EmbedTheme("themes/apt-enjin", themeFs).
-		SetTheme("apt-enjin").
-		Make()
-
 	fPublic = public.New().
 		MountEmbedPath("/", "public", publicFs).
 		Make()
