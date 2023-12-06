@@ -6,11 +6,11 @@ toolchain go1.21.0
 
 require (
 	github.com/fvbommel/sortorder v1.1.0
-	github.com/go-enjin/apt-enjin-theme v0.0.0-20231201001126-fff1d61ebbd1
-	github.com/go-enjin/be v0.5.2
+	github.com/go-enjin/apt-enjin-theme v0.5.4
+	github.com/go-enjin/be v0.5.4
 	github.com/go-enjin/golang-org-x-text v0.12.1-enjin.2
-	github.com/go-enjin/semantic-enjin-theme v0.5.2
-	github.com/urfave/cli/v2 v2.25.7
+	github.com/go-enjin/semantic-enjin-theme v0.5.4
+	github.com/urfave/cli/v2 v2.26.0
 )
 
 require (
@@ -107,7 +107,7 @@ require (
 	github.com/puzpuzpuz/xsync/v2 v2.5.1 // indirect
 	github.com/rivo/uniseg v0.4.2 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/samber/lo v1.38.1 // indirect
+	github.com/samber/lo v1.39.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spkg/zipfs v0.7.1 // indirect
 	github.com/tdewolff/parse/v2 v2.7.6 // indirect
