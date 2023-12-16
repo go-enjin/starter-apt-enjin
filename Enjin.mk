@@ -17,7 +17,7 @@
 #: uncomment to echo instead of execute
 #CMD=echo
 
-ENJIN_MK_VERSION := v0.2.14
+ENJIN_MK_VERSION := v0.2.15
 
 #
 #: phony make targets
@@ -1200,7 +1200,7 @@ stop:
 			echo "# no ${APP_NAME} processes found, nothing to stop"; \
 		else \
 			for RP in $${RUNNING_PIDS}; do \
-				RP_WD=$$( lsof -a -p $${RP} -d cwd -F n | tail -1 | cut -c2- ); \
+				RP_WD=$$( lsof -a -p $${RP} -d cwd -F n 2>/dev/null | tail -1 | cut -c2- ); \
 				LINE=$$(\
 					COLUMNS=1024 ps -x -a -o pid=,command= \
 						| egrep -v '(grep|tail)' \
