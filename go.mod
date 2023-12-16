@@ -6,10 +6,10 @@ toolchain go1.21.0
 
 require (
 	github.com/fvbommel/sortorder v1.1.0
-	github.com/go-enjin/apt-enjin-theme v0.5.4
-	github.com/go-enjin/be v0.5.4
+	github.com/go-enjin/apt-enjin-theme v0.5.6
+	github.com/go-enjin/be v0.5.6
 	github.com/go-enjin/golang-org-x-text v0.12.1-enjin.2
-	github.com/go-enjin/semantic-enjin-theme v0.5.4
+	github.com/go-enjin/semantic-enjin-theme v0.5.6
 	github.com/urfave/cli/v2 v2.26.0
 )
 
@@ -42,14 +42,16 @@ require (
 	github.com/blevesearch/zapx/v13 v13.3.10 // indirect
 	github.com/blevesearch/zapx/v14 v14.3.10 // indirect
 	github.com/blevesearch/zapx/v15 v15.3.13 // indirect
-	github.com/cespare/xxhash/v2 v2.1.2 // indirect
+	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/creack/pty v1.1.21 // indirect
 	github.com/dgraph-io/ristretto v0.1.1 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/eko/gocache/lib/v4 v4.1.5 // indirect
 	github.com/eko/gocache/store/bigcache/v4 v4.2.1 // indirect
 	github.com/eko/gocache/store/go_cache/v4 v4.2.1 // indirect
+	github.com/eko/gocache/store/redis/v4 v4.2.1 // indirect
 	github.com/erni27/imcache v1.1.0 // indirect
 	github.com/felixge/fgprof v0.9.3 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
@@ -71,7 +73,7 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/gomarkdown/markdown v0.0.0-20231115200524-a660076da3fd // indirect
-	github.com/google/pprof v0.0.0-20211214055906-6f57359322fd // indirect
+	github.com/google/pprof v0.0.0-20230207041349-798e818bf904 // indirect
 	github.com/gopherjs/gopherjs v1.17.2 // indirect
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/hexops/gotextdiff v1.0.3 // indirect
@@ -96,7 +98,7 @@ require (
 	github.com/mschoch/smat v0.2.0 // indirect
 	github.com/niklasfasching/go-org v1.7.0 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
-	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
+	github.com/pelletier/go-toml/v2 v2.1.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pkg/profile v1.7.0 // indirect
 	github.com/polds/logrus-papertrail-hook v0.0.0-20180214143432-bcfe7b72c1a4 // indirect
@@ -105,6 +107,7 @@ require (
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/puzpuzpuz/xsync/v2 v2.5.1 // indirect
+	github.com/redis/go-redis/v9 v9.3.0 // indirect
 	github.com/rivo/uniseg v0.4.2 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/samber/lo v1.39.0 // indirect
